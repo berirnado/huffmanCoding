@@ -97,8 +97,29 @@ void gerarArrayDeFrequencia(FILE* fptr, int* freq){
     }
 }
 
+void gerarCodigosHuffman(Node* root, char* caminho, int depth, char** codigos){
+    if(!root) return;
+
+    // Se for folha
+    if(!root->left && !root->right){
+        caminho[depth] = '\0';
+        codigos[root->byte] = strdup(caminho);
+        return;
+    }
+
+    // Esquerda = 0
+    caminho[depth] = '0';
+    gerarCodigos(root->left, caminho, depth + 1, codigos);
+
+    // Direita = 1
+    caminho[depth] = '1';
+    gerarCodigos(root->right, caminho, depth + 1, codigos);
+}
+
 void main(){
     int freq[256] = {0}; // array utilizado pra armazenar a frequencia de cada byte
+    char* huffmanCode[256] = {0}; // array utilizado pra armazenar os códigos gerados
+    char caminho[256];
 
     FILE* fptr = fopen("palavras.txt", "r");
 
@@ -108,6 +129,25 @@ void main(){
     }
 
     gerarArrayDeFrequencia(fptr, freq);
+    MinHeap* heap = buildMinHeapFromArray(freq);
+
+    // Monta arvore de huffman
+    while(heap->size > 1){
+        // Pega os dois de menor frequencia
+        Node* left  = extractMin(heap);
+        Node* right = extractMin(heap);
+
+        // Soma suas frequencias em um nodo pai
+        Node* parent = createNode(0, left->freq + right->freq);
+        parent->left = left;
+        parent->right = right;
+
+        // Insere o pai de volta na heap
+        insertMinHeap(heap, parent);
+    }
+
+    gerarCodigosHuffman(heap, caminho, 0, huffmanCode);
+
     fclose(fptr);
 
     for(int i = 0; i < 256; ++i){
