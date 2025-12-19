@@ -195,10 +195,20 @@ void decodificar(FILE* in, FILE* out, Node* raizHuffman, long originalSize){
     Node* atual = raizHuffman;
     long escritos = 0;
 
+    // apenas um simbolo no arquivo
+    if(!raizHuffman->left && !raizHuffman->right){
+        printf("\nEntrou aqui");
+        for(long i = 0; i < originalSize; i++){
+            fwrite(&raizHuffman->byte, 1, 1, out);
+        }
+        return;
+    }
+
     // percorre até chegar no tamanho de bytes do arquivo original
     while(escritos < originalSize){
         int bit = readBitCodificado(in, &br);
         if(bit == -1){
+            printf("bit -1");
             break;
         }
 
@@ -226,10 +236,17 @@ void main(){
     char caminho[256];
 
     FILE* input = fopen("palavras.txt", "r");
-    FILE* output = fopen("palavras.bin", "wb");
+    long tamanhoOriginal = getFileSize(input);
+    rewind(input); // rewind pq funcao de pegar o tamanho percorre todo arquivo
+    FILE* outputComprimido = fopen("palavras.bin", "wb");
 
     if(input == NULL){
         printf("Erro ao abrir arquivo");
+        exit(1);
+    }
+
+    if(outputComprimido == NULL){
+        printf("Erro ao criar arquivo de saída comprimido");
         exit(1);
     }
 
@@ -268,15 +285,27 @@ void main(){
     unsigned char c;
     while(fread(&c, 1, 1, input)){
         //pega cada caracter do arquivo input e escreve o codigo respectivo q está armazenado na tabela huffmanCode
-        escreveCodigoNoArquivo(output, &buf, huffmanCode[c]);
+        escreveCodigoNoArquivo(outputComprimido, &buf, huffmanCode[c]);
     }
     
     // o arquivo só salva em byte, entao a gente tem que garantir que o final do arquivo seja multiplo de 8, pra fechar o byte
-    preencheUltimoByte(output, &buf);
+    preencheUltimoByte(outputComprimido, &buf);
+    fclose(outputComprimido); // fecha para escrita
+
+    outputComprimido = fopen("palavras.bin", "rb"); // abre pra leitura
     
-    printf("\n\nTamanho do arquivo de input: %ld bytes", getFileSize(input));
-    printf("\nTamanho do arquivo comprimido: %ld bytes", getFileSize(output));
+    printf("\n\nTamanho do arquivo de input: %ld bytes", tamanhoOriginal);
+    printf("\nTamanho do arquivo comprimido: %ld bytes", getFileSize(outputComprimido));
+    rewind(outputComprimido); // rewind pq funcao de pegar o tamanho percorre todo arquivo
+
+    FILE* outputDescomprimido = fopen("palavras_Decompressed.txt", "wb");
+
+    printf("\nDecodificando...");
+    decodificar(outputComprimido, outputDescomprimido, raizHuffman, tamanhoOriginal);
+
+    printf("\nTamanho do arquivo descomprimido: %ld", getFileSize(outputDescomprimido));
 
     fclose(input);
-    fclose(output);
+    fclose(outputComprimido);
+    fclose(outputDescomprimido);
 }
